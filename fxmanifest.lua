@@ -82,8 +82,7 @@ files {
 	'html/fonts/bankgothic.ttf',
 
 	'html/img/accounts/bank.png',
-	'html/img/accounts/black_money.png',
-	'html/img/accounts/money.png',
+	'html/img/accounts/black_money.png'
 }
 
 exports {
@@ -96,5 +95,7 @@ server_exports {
 
 dependencies {
 	'mysql-async',
+	'essentialmode',
+	'esplugin_mysql',
 	'async'
 }

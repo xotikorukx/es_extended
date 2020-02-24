@@ -1,38 +1,4 @@
-RegisterNetEvent('esx:playerJoined')
-AddEventHandler('esx:playerJoined', function()
-	onPlayerJoined(source)
-end)
-
-function onPlayerJoined(playerId)
-	local identifier
-
-	for k,v in ipairs(GetPlayerIdentifiers(playerId)) do
-		if string.match(v, 'license:') then
-			identifier = string.sub(v, 9)
-			break
-		end
-	end
-
-	if identifier then
-		MySQL.Async.fetchScalar('SELECT 1 FROM users WHERE identifier = @identifier', {
-			['@identifier'] = identifier
-		}, function(result)
-			if result then
-				loadESXPlayer(identifier, playerId)
-			else
-				MySQL.Async.execute('INSERT INTO users (identifier) VALUES (@identifier)', {
-					['@identifier'] = identifier
-				}, function(rowsChanged)
-					loadESXPlayer(identifier, playerId)
-				end)
-			end
-		end)
-	else
-		DropPlayer(playerId, 'Your Rockstar license could not be found')
-	end
-end
-
-function loadESXPlayer(identifier, playerId)
+AddEventHandler('es:playerLoaded', function(playerId, player)
 	local tasks = {}
 
 	local userData = {
@@ -40,20 +6,22 @@ function loadESXPlayer(identifier, playerId)
 		inventory = {},
 		job = {},
 		loadout = {},
-		playerName = GetPlayerName(playerId)
+		playerName = GetPlayerName(playerId),
+		coords = nil
 	}
 
-	-- get accounts
+	-- Get accounts
 	table.insert(tasks, function(cb)
 		MySQL.Async.fetchAll('SELECT name, money FROM user_accounts WHERE identifier = @identifier', {
-			['@identifier'] = identifier
+			['@identifier'] = player.getIdentifier()
 		}, function(accounts)
+			local validAccounts = ESX.Table.Set(Config.Accounts)
 			for k,v in ipairs(accounts) do
-				if Config.Accounts[v.name] then
+				if validAccounts[v.name] then
 					table.insert(userData.accounts, {
 						name  = v.name,
 						money = v.money,
-						label = Config.Accounts[v.name]
+						label = Config.AccountLabels[v.name]
 					})
 				end
 			end
@@ -62,120 +30,147 @@ function loadESXPlayer(identifier, playerId)
 		end)
 	end)
 
+	-- Get job and loadout
 	table.insert(tasks, function(cb)
-		MySQL.Async.fetchAll('SELECT job, job_grade, `group`, loadout, position, inventory FROM users WHERE identifier = @identifier', {
-			['@identifier'] = identifier
-		}, function(result)
-			local job, grade, jobObject, gradeObject = result[1].job, tostring(result[1].job_grade)
 
-			if ESX.DoesJobExist(job, grade) then
-				jobObject, gradeObject = ESX.Jobs[job], ESX.Jobs[job].grades[grade]
-			else
-				print(('[es_extended] [^3WARNING^7] Ignoring invalid job for %s [job: %s, grade: %s]'):format(identifier, job, grade))
-				job, grade = 'unemployed', '0'
-				jobObject, gradeObject = ESX.Jobs[job], ESX.Jobs[job].grades[grade]
-			end
+		local tasks2 = {}
 
-			userData.job = {}
+		-- Get job name, grade and coords
+		table.insert(tasks2, function(cb2)
 
-			userData.job.id = jobObject.id
-			userData.job.name = jobObject.name
-			userData.job.label = jobObject.label
+			MySQL.Async.fetchAll('SELECT job, job_grade, loadout, position, inventory FROM users WHERE identifier = @identifier', {
+				['@identifier'] = player.getIdentifier()
+			}, function(result)
+				local job, grade = result[1].job, tostring(result[1].job_grade)
 
-			userData.job.grade = tonumber(grade)
-			userData.job.grade_name = gradeObject.name
-			userData.job.grade_label = gradeObject.label
-			userData.job.grade_salary = gradeObject.salary
+				if ESX.DoesJobExist(job, grade) then
+					local jobObject, gradeObject = ESX.Jobs[job], ESX.Jobs[job].grades[grade]
 
-			userData.job.skin_male = {}
-			userData.job.skin_female = {}
+					userData.job = {}
 
-			if gradeObject.skin_male then userData.job.skin_male = json.decode(gradeObject.skin_male) end
-			if gradeObject.skin_female then userData.job.skin_female = json.decode(gradeObject.skin_female) end
+					userData.job.id    = jobObject.id
+					userData.job.name  = jobObject.name
+					userData.job.label = jobObject.label
 
-			local foundItems = {}
+					userData.job.grade        = tonumber(grade)
+					userData.job.grade_name   = gradeObject.name
+					userData.job.grade_label  = gradeObject.label
+					userData.job.grade_salary = gradeObject.salary
 
-			if result[1].inventory and result[1].inventory ~= '' then
-				local inventory = json.decode(result[1].inventory)
+					userData.job.skin_male    = {}
+					userData.job.skin_female  = {}
 
-				for name,count in pairs(inventory) do
-					local item = ESX.Items[name]
+					if gradeObject.skin_male then
+						userData.job.skin_male = json.decode(gradeObject.skin_male)
+					end
 
-					if item then
-						foundItems[name] = count
-					else
-						print(('[es_extended] [^3WARNING^7] Ignoring invalid item "%s" for "%s"'):format(name, identifier))
+					if gradeObject.skin_female then
+						userData.job.skin_female = json.decode(gradeObject.skin_female)
+					end
+				else
+					print(('[es_extended] [^3WARNING^7] Ignoring invalid job for %s [job: %s, grade: %s]'):format(player.getIdentifier(), job, grade))
+
+					local job, grade = 'unemployed', '0'
+					local jobObject, gradeObject = ESX.Jobs[job], ESX.Jobs[job].grades[grade]
+
+					userData.job = {}
+
+					userData.job.id    = jobObject.id
+					userData.job.name  = jobObject.name
+					userData.job.label = jobObject.label
+
+					userData.job.grade        = tonumber(grade)
+					userData.job.grade_name   = gradeObject.name
+					userData.job.grade_label  = gradeObject.label
+					userData.job.grade_salary = gradeObject.salary
+
+					userData.job.skin_male    = {}
+					userData.job.skin_female  = {}
+				end
+
+				local foundItems = {}
+
+				if result[1].inventory and result[1].inventory ~= '' then
+					local inventory = json.decode(result[1].inventory)
+
+					for name,count in pairs(inventory) do
+						local item = ESX.Items[name]
+
+						if item then
+							foundItems[name] = count
+						else
+							print(('[es_extended] [^3WARNING^7] Ignoring invalid item "%s" for "%s"'):format(name, player.getIdentifier()))
+						end
 					end
 				end
-			end
 
-			for name,item in pairs(ESX.Items) do
-				local count = foundItems[name] or 0
+				for name,item in pairs(ESX.Items) do
+					local count = foundItems[name] or 0
 
-				table.insert(userData.inventory, {
-					name = name,
-					count = count,
-					label = item.label,
-					weight = item.weight,
-					usable = ESX.UsableItemsCallbacks[name] ~= nil,
-					rare = item.rare,
-					canRemove = item.canRemove
-				})
-			end
+					table.insert(userData.inventory, {
+						name = name,
+						count = count,
+						label = item.label,
+						weight = item.weight,
+						usable = ESX.UsableItemsCallbacks[name] ~= nil,
+						rare = item.rare,
+						canRemove = item.canRemove
+					})
+				end
 
-			if result[1].group then
-				userData.group = result[1].group
-			else
-				userData.group = 'user'
-			end
+				table.sort(userData.inventory, function(a,b)
+					return a.label < b.label
+				end)
 
-			table.sort(userData.inventory, function(a, b)
-				return a.label < b.label
+				if result[1].loadout then
+					userData.loadout = json.decode(result[1].loadout)
+
+					-- compatibility with old loadouts
+					for k,v in ipairs(userData.loadout) do
+						if not v.components then v.components = {} end
+						if not v.tintIndex then v.tintIndex = 0 end
+					end
+				end
+
+				if result[1].position and result[1].position ~= '' then
+					userData.coords = json.decode(result[1].position)
+				else
+					print('[es_extended] [^3WARNING^7] Column "position" in "users" table is missing required default value. Using backup coords, fix your database.')
+					userData.coords = {x = -269.4, y = -955.3, z = 31.2, heading = 205.8}
+				end
+
+				cb2()
 			end)
 
-			if result[1].loadout then
-				userData.loadout = json.decode(result[1].loadout)
-
-				-- compatibility with old loadouts
-				for k,v in ipairs(userData.loadout) do
-					if not v.components then v.components = {} end
-					if not v.tintIndex then v.tintIndex = 0 end
-				end
-			end
-
-			if result[1].position and result[1].position ~= '' then
-				userData.coords = json.decode(result[1].position)
-			else
-				print('[es_extended] [^3WARNING^7] Column "position" in "users" table is missing required default value. Using backup coords, fix your database.')
-				userData.coords = {x = -269.4, y = -955.3, z = 31.2, heading = 205.8}
-			end
-
-			cb()
 		end)
+
+		Async.series(tasks2, cb)
+
 	end)
 
+	-- Run Tasks
 	Async.parallel(tasks, function(results)
-		local xPlayer = CreateExtendedPlayer(playerId, identifier, userData.group, userData.accounts, userData.inventory, userData.job, userData.loadout, userData.playerName, userData.coords)
+		local xPlayer = CreateExtendedPlayer(player, userData.accounts, userData.inventory, userData.job, userData.loadout, userData.playerName, userData.coords)
 
 		xPlayer.getMissingAccounts(function(missingAccounts)
 			if #missingAccounts > 0 then
-				for k,v in ipairs(missingAccounts) do
+				for i=1, #missingAccounts, 1 do
 					table.insert(xPlayer.accounts, {
-						name = v,
+						name = missingAccounts[i],
 						money = 0,
-						label = Config.Accounts[v]
+						label = Config.AccountLabels[missingAccounts[i]]
 					})
 				end
 
-				xPlayer.createMissingAccounts(missingAccounts)
+				xPlayer.createAccounts(missingAccounts)
 			end
 
 			ESX.Players[playerId] = xPlayer
+
 			TriggerEvent('esx:playerLoaded', playerId, xPlayer)
 
 			xPlayer.triggerEvent('esx:playerLoaded', {
 				identifier = xPlayer.identifier,
-				money = xPlayer.getMoney(),
 				accounts = xPlayer.getAccounts(),
 				coords = xPlayer.getCoords(),
 				inventory = xPlayer.getInventory(),
@@ -185,10 +180,11 @@ function loadESXPlayer(identifier, playerId)
 				maxWeight = xPlayer.maxWeight
 			})
 
+			xPlayer.displayMoney(xPlayer.getMoney())
 			xPlayer.triggerEvent('esx:createMissingPickups', ESX.Pickups)
 		end)
 	end)
-end
+end)
 
 AddEventHandler('playerDropped', function(reason)
 	local playerId = source
@@ -242,13 +238,23 @@ AddEventHandler('esx:giveInventoryItem', function(target, type, itemName, itemCo
 		else
 			sourceXPlayer.showNotification(_U('imp_invalid_quantity'))
 		end
+	elseif type == 'item_money' then
+		if itemCount > 0 and sourceXPlayer.getMoney() >= itemCount then
+			sourceXPlayer.removeMoney(itemCount)
+			targetXPlayer.addMoney   (itemCount)
+
+			sourceXPlayer.showNotification(_U('gave_money', ESX.Math.GroupDigits(itemCount), targetXPlayer.name))
+			targetXPlayer.showNotification(_U('received_money', ESX.Math.GroupDigits(itemCount), sourceXPlayer.name))
+		else
+			sourceXPlayer.showNotification(_U('imp_invalid_amount'))
+		end
 	elseif type == 'item_account' then
 		if itemCount > 0 and sourceXPlayer.getAccount(itemName).money >= itemCount then
 			sourceXPlayer.removeAccountMoney(itemName, itemCount)
 			targetXPlayer.addAccountMoney   (itemName, itemCount)
 
-			sourceXPlayer.showNotification(_U('gave_account_money', ESX.Math.GroupDigits(itemCount), Config.Accounts[itemName], targetXPlayer.name))
-			targetXPlayer.showNotification(_U('received_account_money', ESX.Math.GroupDigits(itemCount), Config.Accounts[itemName], sourceXPlayer.name))
+			sourceXPlayer.showNotification(_U('gave_account_money', ESX.Math.GroupDigits(itemCount), Config.AccountLabels[itemName], targetXPlayer.name))
+			targetXPlayer.showNotification(_U('received_account_money', ESX.Math.GroupDigits(itemCount), Config.AccountLabels[itemName], sourceXPlayer.name))
 		else
 			sourceXPlayer.showNotification(_U('imp_invalid_amount'))
 		end
@@ -322,6 +328,21 @@ AddEventHandler('esx:removeInventoryItem', function(type, itemName, itemCount)
 				xPlayer.showNotification(_U('threw_standard', itemCount, xItem.label))
 			end
 		end
+	elseif type == 'item_money' then
+		if itemCount == nil or itemCount < 1 then
+			xPlayer.showNotification(_U('imp_invalid_amount'))
+		else
+			local playerCash = xPlayer.getMoney()
+
+			if (itemCount > playerCash or playerCash < 1) then
+				xPlayer.showNotification(_U('imp_invalid_amount'))
+			else
+				xPlayer.removeMoney(itemCount)
+				local pickupLabel = ('~y~%s~s~ [~g~%s~s~]'):format(_U('cash'), _U('locale_currency', ESX.Math.GroupDigits(itemCount)))
+				ESX.CreatePickup('item_money', 'money', itemCount, pickupLabel, playerId)
+				xPlayer.showNotification(_U('threw_money', ESX.Math.GroupDigits(itemCount)))
+			end
+		end
 	elseif type == 'item_account' then
 		if itemCount == nil or itemCount < 1 then
 			xPlayer.showNotification(_U('imp_invalid_amount'))
@@ -385,6 +406,9 @@ AddEventHandler('esx:onPickup', function(id)
 			else
 				xPlayer.showNotification(_U('threw_cannot_pickup'))
 			end
+		elseif pickup.type == 'item_money' then
+			success = true
+			xPlayer.addMoney(pickup.count)
 		elseif pickup.type == 'item_account' then
 			success = true
 			xPlayer.addAccountMoney(pickup.name, pickup.count)

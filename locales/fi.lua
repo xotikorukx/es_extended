@@ -1,5 +1,6 @@
 Locales['fi'] = {
   -- Inventory
+  ['cash'] = 'käteinen',
   ['inventory'] = 'reppu %s / %s',
   ['use'] = 'käytä',
   ['give'] = 'anna',
@@ -22,6 +23,8 @@ Locales['fi'] = {
   ['received_weapon_withammo'] = 'you received ~y~1x~s~ ~b~%s~s~ with ~o~%sx %s~s~ from ~b~%s~s~',
   ['received_weapon_hasalready'] = '~b~%s~s~ attempted to give you an ~y~%s~s~, but you already have one',
   ['received_weapon_noweapon'] = '~b~%s~s~ attempted to give you ammo for an ~y~%s~s~, but you dont have one',
+  ['gave_money'] = 'sinä annoit ~g~$%s~s~ henkilölle ~y~%s~s~',
+  ['received_money'] = 'sinä sait ~g~$%s~s~ henkilöltä ~b~%s~s~',
   ['gave_account_money'] = 'sinä annoit ~g~$%s~s~ (%s) henkilölle ~y~%s~s~',
   ['received_account_money'] = 'sinä sait ~g~$%s~s~ (%s) henkilöltä ~b~%s~s~',
   ['amount_invalid'] = 'virheellinen määrä',
@@ -30,6 +33,7 @@ Locales['fi'] = {
   ['imp_invalid_quantity'] = 'toiminto mahdoton, virheellinen määrä',
   ['imp_invalid_amount'] = 'toiminto mahdoton, virhellinen summa',
   ['threw_standard'] = 'you threw ~y~%sx~s~ ~b~%s~s~',
+  ['threw_money'] = 'you threw ~g~$%s~s~ ~b~cash~s~',
   ['threw_account'] = 'you threw ~g~$%s~s~ ~b~%s~s~',
   ['threw_weapon'] = 'you threw ~y~1x~s~ ~b~%s~s~',
   ['threw_weapon_ammo'] = 'you threw ~y~1x~s~ ~b~%s~s~ with ~o~%sx %s~s~',
@@ -46,9 +50,7 @@ Locales['fi'] = {
   ['company_nomoney'] = 'yritys jolle teet töitä on köyhä eikä voi maksaa palkkaasi',
   ['received_paycheck'] = 'sait palkan',
   ['bank'] = 'pankki',
-  ['account_bank'] = 'bank',
-  ['account_black_money'] = 'dirty Money',
-  ['account_money'] = 'cash',
+  ['black_money'] = 'likainen Raha',
 
   ['act_imp'] = 'toiminto mahdoton',
   ['in_vehicle'] = 'et voi antaa ajoneuvossa olevalle mitään',
@@ -73,6 +75,7 @@ Locales['fi'] = {
   ['chat_clear_all'] = 'tyhjennä chatti kaikilta',
   ['command_clearinventory'] = 'clear all items from inventory',
   ['command_clearloadout'] = 'remove all weapons from loadout',
+  ['command_playerid_param'] = 'specify playerId or leave blank for yourself',
 
   -- Locale settings
   ['locale_digit_grouping_symbol'] = ' ',

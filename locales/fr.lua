@@ -1,5 +1,6 @@
 Locales['fr'] = {
   -- Inventory
+  ['cash'] = 'espèces',
   ['inventory'] = 'inventaire %s / %s',
   ['use'] = 'utiliser',
   ['give'] = 'donner',
@@ -22,6 +23,8 @@ Locales['fr'] = {
   ['received_weapon_withammo'] = 'vous avez reçu ~y~1x~s~ ~b~%s~s~ avec ~o~%sx %s~s~ de ~b~%s~s~',
   ['received_weapon_hasalready'] = '~b~%s~s~ a tenté de vous donner ~y~%s~s~, mais vous en aviez déjà un exemplaire',
   ['received_weapon_noweapon'] = '~b~%s~s~ tente de vous donner des munitions pour ~y~%s~s~, mais vous n\'en avez pas',
+  ['gave_money'] = 'vous avez donné ~g~$%s~s~ à ~y~%s~s~',
+  ['received_money'] = 'vous avez reçu ~g~$%s~s~ par ~b~%s~s~',
   ['gave_account_money'] = 'vous avez donné ~g~$%s~s~ (%s) à ~y~%s~s~',
   ['received_account_money'] = 'vous avez reçu ~g~$%s~s~ (%s) par ~b~%s~s~',
   ['amount_invalid'] = 'montant invalide',
@@ -30,6 +33,7 @@ Locales['fr'] = {
   ['imp_invalid_quantity'] = 'action impossible, ~r~quantité invalide',
   ['imp_invalid_amount'] = 'action impossible, ~r~montant invalide',
   ['threw_standard'] = 'vous avez jeté ~y~%sx~s~ ~b~%s~s~',
+  ['threw_money'] = 'vous avez jeté ~g~$%s~s~ ~b~cash~s~',
   ['threw_account'] = 'vous avez jeté ~g~$%s~s~ ~b~%s~s~',
   ['threw_weapon'] = 'vous avez jeté ~y~1x~s~ ~b~%s~s~',
   ['threw_weapon_ammo'] = 'vous avez jeté ~y~1x~s~ ~b~%s~s~ avec ~o~%sx %s~s~',
@@ -46,9 +50,7 @@ Locales['fr'] = {
   ['company_nomoney'] = 'votre entreprise n\'a plus d\'argent pour vous payer!',
   ['received_paycheck'] = 'paiement reçu',
   ['bank'] = 'banque',
-  ['account_bank'] = 'bank',
-  ['account_black_money'] = 'dirty Money',
-  ['account_money'] = 'cash',
+  ['black_money'] = 'argent sale',
 
   ['act_imp'] = 'action impossible',
   ['in_vehicle'] = 'Vous ne pouvez rien donner à quelqu\'un dans un véhicule',
@@ -73,6 +75,7 @@ Locales['fr'] = {
   ['chat_clear_all'] = 'vider le chat pour tous le monde',
   ['command_clearinventory'] = 'effacer tout les items de l\'inventaire',
   ['command_clearloadout'] = 'retirer toutes les armes de l\'équipement',
+  ['command_playerid_param'] = 'spécifiez un playerid ou laissez vide pour vous-même',
 
   -- Locale settings
   ['locale_digit_grouping_symbol'] = ' ',
